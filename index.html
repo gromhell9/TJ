@@ -1,0 +1,257 @@
+<!doctype html>
+
+<html>
+<head>
+
+    <title>TJ: Teaching Johnny-five</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.8/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+
+    <style type="text/css" media="screen">
+        @import url('https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i');
+
+        body{
+            margin: 0px;
+            font-family: 'Nunito', sans-serif;
+        }
+        div{
+            box-sizing: border-box;
+        }
+        button, input, select, option{
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .title-bar{
+            position: absolute;
+            width: 100%;
+            height: 32px;
+            background-color: #0a3859;
+            z-index: 99;
+            top: 0;
+        }
+        .logo-text{
+            color: white;
+            font-size: 16px;
+            margin: 0;
+            padding: 1px 32px 0 16px;
+            line-height: 30px;
+            font-weight: 200;
+            display: inline-block;
+        }
+
+        .tool-bar{
+            position: absolute;
+            width: 70%;
+            height: 42px;
+            background-color: #205876;
+            z-index: 99;
+            top: 32px;
+            right: 30%;
+            padding: 4px 0 0 12px;
+        }
+        .tool-button{
+            width: 32px;
+            height: 32px;
+            background-color: #3f6580;
+            border: none;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .tool-button i{
+            font-size: 21px;
+            padding-top: 3px;
+            color: white;
+        }
+        .tool-select{
+            width: 320px;
+            height: 30px;
+            padding: 0 0 0 6px;
+            background-color: white;
+            border: 1px solid #3f6580;
+            border-radius: 3px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        #tool_newFile_2{
+            position: absolute;
+            right:  48px;
+        }
+        #tool_run_1{
+            position: absolute;
+            right: calc(50% + 12px);
+        }
+        #tool_run_2{
+            position: absolute;
+            right: 12px;
+        }
+        #j5_editor_1 {
+            position: absolute;
+            top: 80px;
+            bottom: 120px;
+            left: 0;
+            right: 65%;
+            font-size: 14px;
+        }
+        #j5_editor_2 {
+            position: absolute;
+            top: 80px;
+            bottom: 120px;
+            left: 35%;
+            right: 30%;
+            font-size: 14px;
+        }
+        #console{
+            position: absolute;
+            width: 70%;
+            height: 120px;
+            bottom: 0;
+            right: 30%;
+            overflow-y: scroll;
+            background-color: #000000;
+            color: white;
+            font-size: 11px;
+            padding: 12px;
+        }
+        #tool_copy{
+          position: absolute;
+          right:  84px;
+          transform:scale(-1,1);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="title-bar">
+        <div class="logo-text"><b>TJ :</b> Teaching Johnny-five</div>
+    </div>
+    <div class="tool-bar">
+        <select id="tool_ports" class="tool-select"></select>
+        <button id="tool_addPorts" class="tool-button"><i class="material-icons">low_priority</i></button>
+
+        <button id="tool_run_1" class="tool-button"><i class="material-icons">file_upload</i></button>
+
+        <button id="tool_newFile_2" class="tool-button"><i class="material-icons">note_add</i></button>
+        <button id="tool_copy" class="tool-button"><i class="material-icons">reply</i></button>
+        <button id="tool_run_2" class="tool-button"><i class="material-icons">file_upload</i></button>
+    </div>
+
+    <div id="j5_editor_1"></div>
+    <div id="j5_editor_2"></div>
+    <div id="console"></div>
+
+
+    <script>
+        var socket = io.connect(window.location.hostname+':4558');
+
+        // Get ports info at startup
+        socket.on('ports', function(data){
+            console.log(data);
+            $('#tool_ports').append($('<option>', {value: data.comName, text: data.comName +": "+ data.manufacturer}));
+        });
+
+        // Console info
+        socket.on('console', function(data){
+            console.log(data);
+            if($('#console').text().split('\n').length>100){
+                $('#console').html(data + '<br/>');
+            }else{
+                $('#console').html($('#console').html() + data + '<br/>');
+            }
+            $('#console').scrollTop($('#console')[0].scrollHeight);
+        });
+
+        // new file
+        $('#tool_newFile_1').on('click', function(){
+            makeNewFile_1();
+        });
+        /*$('#tool_newFile_2').on('click', function(){
+            makeNewFile_2();
+        });*/
+
+        // Run code
+        $('#tool_run_1').on('click', function(){
+            console.log(editorJ5_1.getValue())
+            socket.emit('execute_1', {code: editorJ5_1.getValue()})
+        });
+
+        $('#tool_run_2').on('click', function(){
+            console.log(editorJ5_2.getValue())
+            socket.emit('execute_2', {code: editorJ5_2.getValue()})
+        });
+
+
+        // Port Code Addition
+        $('#tool_addPorts').on('click', function(){
+            var _boardType = $('#tool_ports').val();
+
+            editorJ5_1.find('pi-io');
+            if(!editorJ5_1.selection.isEmpty()){
+                editorJ5_1.removeLines();
+            }
+            editorJ5_1.find('.Board');
+            if(!editorJ5_1.selection.isEmpty()){
+                editorJ5_1.removeLines();
+            }
+            editorJ5_1.insert("var board = new five.Board({port: \"" + _boardType + "\"});\n");
+
+            editorJ5_2.find('pi-io');
+            if(!editorJ5_2.selection.isEmpty()){
+                editorJ5_2.removeLines();
+            }
+            editorJ5_2.find('.Board');
+            if(!editorJ5_2.selection.isEmpty()){
+                editorJ5_2.removeLines();
+            }
+            editorJ5_2.insert("var board = new five.Board({port: \"" + _boardType + "\"});\n");
+        })
+
+        // Init editor;
+        var editorJ5_1 = ace.edit("j5_editor_1");
+        editorJ5_1.setTheme("ace/theme/chrome");
+        editorJ5_1.getSession().setMode("ace/mode/javascript");
+        editorJ5_1.setReadOnly(true);
+
+        var editorJ5_2 = ace.edit("j5_editor_2");
+        editorJ5_2.setTheme("ace/theme/chrome");
+        editorJ5_2.getSession().setMode("ace/mode/javascript");
+
+
+        $('document').ready(function(){
+            loadSavedFile_1();
+            loadSavedFile_2();
+            $('#tool_ports').append($('<option>', {value: 'raspi', text:"Raspberry Pi 3"}));
+        });
+
+        function makeNewFile_2(){
+            editorJ5_2.setValue(loadFile('./res/default.js'));
+            editorJ5_2.gotoLine(5);
+            console.log("new")
+        }
+
+        function loadSavedFile_1(){
+            editorJ5_1.setValue(loadFile('./res/body_1.js'));
+            editorJ5_1.gotoLine(editorJ5_1.session.getLength());
+        }
+
+        function loadSavedFile_2(){
+            editorJ5_2.setValue(loadFile('./res/body_2.js'));
+            editorJ5_2.gotoLine(editorJ5_2.session.getLength());
+        }
+
+        function loadFile(_filePath){
+            var _listPath =_filePath;
+            var xmlhttp = new XMLHttpRequest();
+
+        	  xmlhttp.open("GET", _listPath, false);
+        	  xmlhttp.send(null);
+
+            return xmlhttp.responseText;
+        }
+
+    </script>
+</body>
+</html>

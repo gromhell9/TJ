@@ -1,0 +1,11 @@
+{
+  "name": "tj",
+  "version": "1.0.0",
+  "description": "teaching johnny-five",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Changmin, Kim",
+  "license": "ISC"
+}
